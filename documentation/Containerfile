@@ -1,0 +1,11 @@
+FROM python:3.14 AS builder
+RUN apt-get update -y
+RUN apt-get install -y pipx
+RUN	pip install poetry
+WORKDIR /src
+COPY . .
+RUN	python -m poetry install --no-root
+RUN	python -m poetry run zensical build
+
+FROM nginxinc/nginx-unprivileged:alpine3.23-perl
+COPY --from=builder /src/site /usr/share/nginx/html

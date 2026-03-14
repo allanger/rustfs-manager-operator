@@ -1,0 +1,16 @@
+FROM docker.io/rustfs/rc:v0.1.7 AS rc
+WORKDIR /output
+RUN cp $(which rc) .
+
+FROM rust:alpine3.23 AS builder
+WORKDIR /src
+COPY . .
+RUN cargo build --release
+WORKDIR /output
+RUN cp /src/target/release/rustfs-manager-operator .
+
+FROM gcr.io/distroless/static
+COPY --from=builder /output/rustfs-manager-operator /usr/bin/controller
+COPY --from=rc /output/rc /usr/bin/rc
+ENTRYPOINT ["/usr/bin/controller"]
+USER 1001

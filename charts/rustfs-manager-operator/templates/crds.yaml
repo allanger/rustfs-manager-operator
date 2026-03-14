@@ -1,0 +1,27 @@
+{{- if .Values.crds.install }}
+{{- $manifests := dict }}
+{{- range $path, $index :=  .Files.Glob  "crd/*" }}
+  {{- $file := $.Files.Get $path }}
+  {{- $_ := set $manifests ($index | toString ) $file }}
+{{- end }}
+{{- range $_, $file := $manifests }}
+---
+{{- $manifest := $file | fromYaml }}
+apiVersion: {{ get $manifest "apiVersion" }}
+kind: {{ get $manifest "kind" }}
+{{- $metadata := get $manifest "metadata" }}
+metadata:
+  name: {{ get $metadata "name" }}
+  {{- with $.Values.labels }}
+  labels:
+    {{- . | toYaml | nindent 4 }}
+  {{- end }}
+  annotations:
+    {{- if $.Values.crds.keep }}
+    helm.sh/resource-policy: keep
+    {{- end }}
+spec:
+{{ get $manifest "spec" | toYaml | indent 2 }}
+{{- end }}
+
+{{- end }}

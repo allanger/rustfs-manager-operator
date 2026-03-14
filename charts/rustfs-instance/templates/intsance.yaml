@@ -1,0 +1,12 @@
+---
+apiVersion: rustfs.badhouseplants.net/v1beta1
+kind: RustFSInstance
+metadata:
+  name: {{ include "rustfs-instance.name" . }}
+  labels:
+    {{- include "rustfs-instance.labels" . | nindent 4 }}
+spec:
+  endpoint: {{ .Values.endpoint }}
+  credentialsSecret:
+    namespace: {{ .Release.Namespace }}
+    name: {{ include "rustfs-instance.name" . }}
