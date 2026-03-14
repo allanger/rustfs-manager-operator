@@ -1,0 +1,11 @@
+---
+# Run basic quick code checks
+when:
+  event:
+    - pull_request
+
+steps:
+  - name: Execute the pre-commit hook
+    image: codeberg.org/sp1thas/woodpecker-ci-pre-commit-runner
+    settings:
+      args: "--all-files"
