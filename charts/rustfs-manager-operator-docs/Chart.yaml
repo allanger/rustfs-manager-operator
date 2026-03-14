@@ -1,0 +1,10 @@
+apiVersion: v2
+name: rustfs-manager-operator-docs
+description: Deploy documentation for the RustFS Manager Operator
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+maintainers:
+  - name: Nikolai Rodionov
+    email: allanger@badhouseplants.net
+    url: https://allanger.xyz

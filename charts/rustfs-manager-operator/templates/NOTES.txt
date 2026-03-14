@@ -1,0 +1,6 @@
+-----------------------------------------------------------------------
+Release information
+Chart name: {{ .Chart.Name }}.
+Version of the chart: {{ .Chart.Version }}
+Release name {{ .Release.Name }}.
+-----------------------------------------------------------------------

@@ -1,0 +1,8 @@
+FROM docker.io/rustfs/rc:v0.1.7 AS rc
+WORKDIR /output
+RUN cp $(which rc) .
+
+FROM gcr.io/distroless/static
+COPY --from=rc /output/rc /usr/bin/rc
+ENTRYPOINT ["/usr/bin/rc"]
+USER 1001

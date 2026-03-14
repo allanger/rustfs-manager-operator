@@ -1,0 +1,67 @@
+name: Publish a container image
+
+on:
+  push:
+  release:
+    types: [published, edited]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - containerfile: ./operator/Containerfile
+            context: ./operator
+            image: rustfs-manager-operator
+          - containerfile: ./documentation/Containerfile
+            context: ./documentation
+            image: rustfs-manager-operator-docs
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-qemu-action@v3
+      - name: Set the image metadata
+        run: ./scripts/set_image_metadata
+      - name: Build an image
+        id: build-image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: ${{ matrix.image }}-dev
+          tags: ${{ env.TAGS }}
+          platforms: linux/amd64
+          context: ${{ matrix.context }}
+          containerfiles: |
+            ${{ matrix.containerfile }}
+          labels: ${{ env.ANNOTATIONS }}
+
+      - name: Push the image to GHCR
+        id: push-to-ghcr
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-image.outputs.image }}
+          tags: ${{ steps.build-image.outputs.tags }}
+          registry: ghcr.io/${{ github.repository_owner }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Set the version tag (only if released)
+        id: retag-version
+        if: (github.event_name == 'release' && (github.event.action == 'published' || github.event.action == 'edited'))
+        run: |
+          buildah tag \
+          ${{ steps.build-image.outputs.image }}:${{ github.sha }} \
+          ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          buildah tag \
+          ${{ steps.build-image.outputs.image }}:${{ github.sha }} \
+          ghcr.io/${{ github.repository_owner }}/${{ matrix.image}}:${{ github.event.release.tag_name }}
+
+      - name: Push the release image to GHCR
+        if: (github.event_name == 'release' && (github.event.action == 'published' || github.event.action == 'edited'))
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.event.release.tag_name }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
