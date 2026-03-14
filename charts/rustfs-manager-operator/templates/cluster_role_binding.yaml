@@ -1,0 +1,17 @@
+{{- if .Values.rbac.create -}}
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "rustfs-manager-operator.name" . }}
+  labels:
+    {{- include "rustfs-manager-operator.labels" . | nindent 4 }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "rustfs-manager-operator.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "rustfs-manager-operator.name" . }}
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
