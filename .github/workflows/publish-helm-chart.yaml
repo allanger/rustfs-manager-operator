@@ -47,7 +47,7 @@ jobs:
           done
 
       - name: Package release charts
-        if: (github.event_name = 'release')
+        if: (github.event_name == 'release')
         run: |-
           for chart in $(find charts -maxdepth 1 -mindepth 1 -type d); do
             helm dep build $chart
