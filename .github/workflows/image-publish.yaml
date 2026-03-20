@@ -14,8 +14,10 @@ jobs:
       matrix:
         include:
           - containerfile: ./operator/Containerfile
+            context: ./operator
             image: rustfs-manager-operator
           - containerfile: ./documentation/Containerfile
+            context: ./documentation
             image: rustfs-manager-operator-docs
 
     steps:
@@ -30,6 +32,7 @@ jobs:
           image: ${{ matrix.image }}-dev
           tags: ${{ env.TAGS }}
           platforms: linux/amd64, linux/arm64/v8
+          context: ${{ matrix.context }}
           containerfiles: |
             ${{ matrix.containerfile }}
           labels: ${{ env.ANNOTATIONS }}
