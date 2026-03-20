@@ -20,6 +20,8 @@ jobs:
       - uses: pre-commit/action@v3.0.1
       - uses: go-task/setup-task@v1
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
       - name: Check CRD generation
         run: |-
           task sync-crds

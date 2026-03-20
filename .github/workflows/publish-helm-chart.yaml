@@ -57,7 +57,7 @@ jobs:
       - name: Push Helm chart to OCI compatible registry (ghcr)
         run: |
           charts=$(find chart-packages -maxdepth 1 -mindepth 1 -type f)
-          REGISTRY=$(echo oci://ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
+          REGISTRY=$(echo oci://ghcr.io/${{ github.repository }}/helm | tr '[:upper:]' '[:lower:]')
 
           for chart in $charts; do
             echo ${chart}
