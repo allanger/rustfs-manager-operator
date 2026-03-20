@@ -1,8 +1,8 @@
 name: Documentation publish
 on:
   push:
-    branches:
-      - main
+    #branches:
+    #  - main
 
 permissions:
   contents: read
@@ -25,5 +25,5 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: ./documentation/site
-      - uses: actions/deploy-pages@v4
-        id: deployment
+      #- uses: actions/deploy-pages@v4
+      #  id: deployment
