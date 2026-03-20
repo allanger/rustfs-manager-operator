@@ -20,5 +20,13 @@ tasks:
       - cd operator && cargo run -- --print-crd  > {{.WORKDIR}}/crds.yaml
       - cd {{.WORKDIR}} && yq -s '.metadata.name + ".yaml"' crds.yaml && rm crds.yaml
       - rm -rf ./charts/rustfs-manager-operator/crd/*
-      - cp {{.WORKDIR}}/* ./helm/rustfs-manager-operator/crd/
+      - cp {{.WORKDIR}}/* ./charts/rustfs-manager-operator/crd/
       - rm -rf {{.WORKDIR}}
+  unit-tests:
+    desc: Execute unit tests
+    silent: true
+    cmd: cd operator && cargo test
+  helm-lint:
+    desc: Run the helm linter
+    silent: true
+    cmd: ct lint --all --validate-maintainers=false

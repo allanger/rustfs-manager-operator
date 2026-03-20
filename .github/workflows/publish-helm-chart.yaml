@@ -1,0 +1,71 @@
+name: Publish an OCI Artifact for helm charts
+
+on:
+  push:
+  release:
+    types: [published, edited]
+
+jobs:
+  release-oci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v3
+      - uses: actions/setup-python@v4
+      - name: Insert dev images to the charts
+        if: (github.event_name != 'release')
+        run: |-
+          export DOCS_IMAGE_REPOSITORY=$(yq '.image.repository + "-dev"' ./charts/rustfs-manager-operator-docs/values.yaml)
+          yq -i '.image.repository = env(DOCS_IMAGE_REPOSITORY)' ./charts/rustfs-manager-operator-docs/values.yaml
+          yq -i '.image.tag = env(GITHUB_SHA)' ./charts/rustfs-manager-operator-docs/values.yaml
+
+          export OPERATOR_IMAGE_REPOSITORY=$(yq '.image.repository + "-dev"' ./charts/rustfs-manager-operator/values.yaml)
+          yq -i '.image.repository = env(OPERATOR_IMAGE_REPOSITORY)' ./charts/rustfs-manager-operator/values.yaml
+          yq -i '.image.tag = env(GITHUB_SHA)' ./charts/rustfs-manager-operator/values.yaml
+
+      - name: Insert dev images to the charts
+        if: (github.event_name != 'release')
+        run: |-
+          export BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+          export SHA="+$(git rev-parse --short HEAD)"
+          echo "BRANCH=${BRANCH}" >> "${GITHUB_ENV}"
+          echo "SHA=${SHA}" >> "${GITHUB_ENV}"
+
+      - name: Login to the registry
+        run: |-
+          helm registry login ghcr.io \
+            --username ${{ github.actor }} \
+            --password ${{ github.token }}
+
+      - name: Package dev charts
+        if: (github.event_name != 'release')
+        run: |-
+          for chart in $(find charts -maxdepth 1 -mindepth 1 -type d); do
+            yq e -i ".version += env(SHA)" "$chart/Chart.yaml"
+            helm dep build $chart
+            helm package $chart -d chart-packages;
+          done
+
+      - name: Package release charts
+        if: (github.event_name = 'release')
+        run: |-
+          for chart in $(find charts -maxdepth 1 -mindepth 1 -type d); do
+            helm dep build $chart
+            helm package $chart -d chart-packages;
+          done
+
+      - name: Push Helm chart to OCI compatible registry (ghcr)
+        run: |
+          charts=$(find chart-packages -maxdepth 1 -mindepth 1 -type f)
+          REGISTRY=$(echo oci://ghcr.io/${{ github.repository }} | tr '[:upper:]' '[:lower:]')
+
+          for chart in $charts; do
+            echo ${chart}
+            CHART_NAME=$(helm show chart "${chart}" | yq .name)
+            CHART_VERSION=$(helm show chart "${chart}" | yq .version)
+            if helm pull ${REGISTRY}/${CHART_NAME}:${CHART_VERSION}; then
+              echo "Chart is found in the upstream: ${CHART_NAME}:${CHART_VERSION}"
+              continue;
+            fi
+            helm push "${chart}" "${REGISTRY}"
+          done
