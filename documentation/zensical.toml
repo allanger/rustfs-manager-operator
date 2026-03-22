@@ -1,12 +1,12 @@
 [project]
 site_name = "Documentation"
 site_description = "A new project generated from the default template project."
-site_author = "<your name here>"
+site_author = "allanger"
 copyright = """
 Copyright &copy; 2026 The authors
 """
-repo_url = "https://gitea.badhouseplants.net/badhouseplants/rustfs-manager-operator"
-repo_name = "badhouseplants/rustfs-manager-operator"
+repo_url = "https://github.com/allanger/rustfs-manager-operator"
+repo_name = "allanger/rustfs-manager-operator"
 [project.theme]
 favicon = "assets/logo.png"
 
