@@ -3,8 +3,8 @@ crds:
   keep: true
 
 image:
-  registry: gitea.badhouseplants.net
-  repository: badhouseplants/rustfs-manager-operator
+  registry: ghcr.io
+  repository: allanger/rustfs-manager-operator
   # This sets the pull policy for images.
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.

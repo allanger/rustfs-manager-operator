@@ -1,5 +1,4 @@
 # RustFS Manager Operator
-[![Woodpecker CI](https://ci.badhouseplants.net/api/badges/29/status.svg)](https://ci.badhouseplants.net/repos/29)
 
 An operator to manage bucket and user on a RustfFS instance through Kubernetes CRDs.
 
