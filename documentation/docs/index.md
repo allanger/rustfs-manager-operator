@@ -6,18 +6,11 @@ This operator is supposed to connect to an existing **RustFS** instance and mana
 
 ### How to install
 
-The operator is distributed as a helm chart, that can be installed either from a self-hosted **gitea** or **github**.
+The operator is distributed as a helm chart, that can be installed either from **gchr** as an OCI artifact.
 
-#### Gitea
-
-```shell
-helm install rustfs-manager-operator oci://gitea.badhouseplants.net/badhouseplants/rustfs-manager-operator/rustfs-manager-operator --version 0.1.0
-```
-
-#### Github
 
 ```shell
-helm install rustfs-manager-operator oci://ghcr.io/badhouseplants.net/rustfs-manager-operator/rustfs-manager-operator --version 0.1.0
+helm install rustfs-manager-operator oci://ghcr.io/badhouseplants.net/rustfs-manager-operator/rustfs-manager-operator --version 0.1.2
 ```
 
 #### Docs
@@ -40,7 +33,7 @@ password: qwertyu9
 ```
 
 ```shell
-helm install <your instance name> oci://gitea.badhouseplants.net/badhouseplants/rustfs-manager-operator/rustfs-instance --version 0.1.0 -f values.yaml
+helm install <your instance name> oci://ghcr.io/badhouseplants.net/rustfs-manager-operator/rustfs-instance --version 0.1.2 -f values.yaml
 ```
 
 And wait until it becomes ready.

@@ -1,6 +1,6 @@
 [project]
 site_name = "Documentation"
-site_description = "A new project generated from the default template project."
+site_description = "Documentation for the RustFS Manager Operator"
 site_author = "allanger"
 copyright = """
 Copyright &copy; 2026 The authors

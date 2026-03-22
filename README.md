@@ -1,6 +1,6 @@
 # RustFS Manager Operator
 
-An operator to manage bucket and user on a RustfFS instance through Kubernetes CRDs.
+An operator to manage bucket and user on a RustFS instance through Kubernetes CRDs.
 
 ## Getting started
 
@@ -10,7 +10,7 @@ Find better docs here: <https://rustfs.badhouseplants.net>
 ### Install the operator
 
 ```shell
-helm install rustfs-manager-operator oci://gitea.badhouseplants.net/badhouseplants/rustfs-manager-operator/rustfs-manager-operator --version 0.1.0
+helm install rustfs-manager-operator oci://ghcr.io/allanger/rustfs-manager-operator/helm/rustfs-manager-operator --version 0.1.2
 ```
 ### Connect it to a RustFS instance
 
@@ -26,7 +26,7 @@ password: qwertyu9
 2. Install the **rustfs-instance** helm chart
 
 ```shell
-helm install rustfs-instance oci://gitea.badhouseplants.net/badhouseplants/rustfs-u/rustfs-instance --version 0.1.0 -f ./values.yaml
+helm install rustfs-instance oci://ghcr.io/allanger/rustfs-manager-operator/helm/rustfs-instance --version 0.1.2 -f ./values.yaml
 ```
 
 ### Start creating Buckets and Users
