@@ -1,8 +1,8 @@
 name: Documentation publish
 on:
   push:
-    #branches:
-    #  - main
+  release:
+    types: [published, edited]
 
 permissions:
   contents: read
