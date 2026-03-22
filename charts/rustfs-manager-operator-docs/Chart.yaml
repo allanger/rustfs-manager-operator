@@ -3,7 +3,7 @@ name: rustfs-manager-operator-docs
 description: Deploy documentation for the RustFS Manager Operator
 type: application
 version: 0.1.2
-appVersion: "0.1.2""
+appVersion: "0.1.2"
 maintainers:
   - name: Nikolai Rodionov
     email: allanger@badhouseplants.net
