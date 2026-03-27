@@ -17,8 +17,9 @@ use k8s_openapi::api::core::v1::Secret;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use kube::api::{ListParams, ObjectMeta, PostParams};
 use kube::runtime::Controller;
-use kube::runtime::controller::Action;
+use kube::runtime::controller::{Action, ReconcileRequest};
 use kube::runtime::events::Recorder;
+use kube::runtime::reflector::ObjectRef;
 use kube::runtime::watcher::Config;
 use kube::{Api, Client, Error, Resource, ResourceExt};
 use rand::RngExt;
@@ -31,7 +32,7 @@ use tracing::*;
 const TYPE_USER_READY: &str = "UserReady";
 const TYPE_SECRET_READY: &str = "SecretReady";
 const FIN_CLEANUP: &str = "s3.badhouseplants.net/bucket-cleanup";
-const CONFIGMAP_LABEL: &str = "s3.badhouseplants.net/s3-bucket";
+const SECRET_LABEL: &str = "s3.badhouseplants.net/s3-bucket";
 
 const AWS_ACCESS_KEY_ID: &str = "AWS_ACCESS_KEY_ID";
 const AWS_SECCRET_ACCESS_KEY: &str = "AWS_SECRET_ACCESS_KEY";
@@ -494,7 +495,7 @@ async fn label_secret(
             map
         }
     };
-    labels.insert(CONFIGMAP_LABEL.to_string(), bucket_name.to_string());
+    labels.insert(SECRET_LABEL.to_string(), bucket_name.to_string());
     secret.metadata.labels = Some(labels);
     api.replace(&secret.name_any(), &PostParams::default(), &secret)
         .await?;
@@ -604,6 +605,17 @@ pub(crate) fn error_policy(
     Action::requeue(Duration::from_secs(5 * 60))
 }
 
+fn cr_ref_from_secret(secret: Secret) -> Option<ObjectRef<RustFSBucketUser>> {
+    let ns = match secret.namespace() {
+        Some(res) => res,
+        None => return None,
+    };
+    match secret.labels().get(SECRET_LABEL) {
+        Some(val) => Some(ObjectRef::new(val).within(&ns)),
+        None => None,
+    }
+}
+
 #[instrument(skip(client), fields(trace_id))]
 pub async fn run(client: Client, config: OperatorConfig) {
     let users = Api::<RustFSBucketUser>::all(client.clone());
@@ -612,13 +624,16 @@ pub async fn run(client: Client, config: OperatorConfig) {
         std::process::exit(1);
     }
     let recorder = Recorder::new(client.clone(), "user-controller".into());
+    let secret_api: Api<Secret> = Api::all(client.clone());
     let context = Context {
         client,
         recorder,
         config,
     };
+
     Controller::new(users, Config::default().any_semantic())
         .shutdown_on_signal()
+        .watches(secret_api, Config::default(), cr_ref_from_secret)
         .run(reconcile, error_policy, Arc::new(context))
         .filter_map(|x| async move { std::result::Result::ok(x) })
         .for_each(|_| futures::future::ready(()))
