@@ -7,6 +7,7 @@ use kube::api::{ListParams, PostParams};
 use kube::runtime::Controller;
 use kube::runtime::controller::Action;
 use kube::runtime::events::Recorder;
+use kube::runtime::reflector::ObjectRef;
 use kube::runtime::watcher::Config;
 use kube::{Api, Client, Error, ResourceExt};
 use std::collections::BTreeMap;
@@ -367,6 +368,13 @@ pub(crate) fn error_policy(
     Action::requeue(Duration::from_secs(5 * 60))
 }
 
+fn cr_ref_from_secret(secret: Secret) -> Option<ObjectRef<RustFSInstance>> {
+    match secret.labels().get(SECRET_LABEL) {
+        Some(val) => Some(ObjectRef::new(val)),
+        None => None,
+    }
+}
+
 #[instrument(skip(client), fields(trace_id))]
 pub async fn run(client: Client) {
     let s3instances = Api::<RustFSInstance>::all(client.clone());
@@ -375,9 +383,11 @@ pub async fn run(client: Client) {
         std::process::exit(1);
     }
     let recorder = Recorder::new(client.clone(), "s3instance-controller".into());
+    let secret_api: Api<Secret> = Api::all(client.clone());
     let context = Context { client, recorder };
     Controller::new(s3instances, Config::default().any_semantic())
         .shutdown_on_signal()
+        .watches(secret_api, Config::default(), cr_ref_from_secret)
         .run(reconcile, error_policy, Arc::new(context))
         .filter_map(|x| async move { std::result::Result::ok(x) })
         .for_each(|_| futures::future::ready(()))
