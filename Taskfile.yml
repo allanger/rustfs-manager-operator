@@ -22,6 +22,19 @@ tasks:
       - rm -rf ./charts/rustfs-manager-operator/crd/*
       - cp {{.WORKDIR}}/* ./charts/rustfs-manager-operator/crd/
       - rm -rf {{.WORKDIR}}
+  bump-version:
+    desc: Set a new version everywhere
+    silent: false
+    cmds:
+      - yq -i '.package.version = "{{.CLI_ARGS}}"' ./operator/Cargo.toml
+      - cd ./operator && cargo generate-lockfile
+      - poetry --project ./documentation/ version "{{.CLI_ARGS}}"
+      - yq -i '.version = "{{.CLI_ARGS}}"' ./charts/rustfs-instance/Chart.yaml
+      - yq -i '.appVersion = "{{.CLI_ARGS}}"' ./charts/rustfs-instance/Chart.yaml
+      - yq -i '.version = "{{.CLI_ARGS}}"' ./charts/rustfs-manager-operator/Chart.yaml
+      - yq -i '.appVersion = "{{.CLI_ARGS}}"' ./charts/rustfs-manager-operator/Chart.yaml
+      - yq -i '.version = "{{.CLI_ARGS}}"' ./charts/rustfs-manager-operator-docs/Chart.yaml
+      - yq -i '.appVersion = "{{.CLI_ARGS}}"' ./charts/rustfs-manager-operator-docs/Chart.yaml
   unit-tests:
     desc: Execute unit tests
     silent: true
