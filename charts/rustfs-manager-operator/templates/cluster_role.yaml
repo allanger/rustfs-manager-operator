@@ -26,6 +26,7 @@ rules:
   - rustfsbuckets
   - rustfsinstances
   - rustfsbucketusers
+  - rustfscustomusers
   verbs:
   - create
   - delete
@@ -41,6 +42,8 @@ rules:
   - rustfsbuckets/finalizers
   - rustfsintsances/finalizers
   - rustfsbucketusers/finalizers
+  - rustfscustomusers/finalizers
+  verbs:
   verbs:
   - update
 
@@ -50,6 +53,7 @@ rules:
   - rustfsbuckets/status
   - rustfsinstances/status
   - rustfsbucketusers/status
+  - rustfscustomusers/status
   verbs:
   - get
   - patch

@@ -1,0 +1,50 @@
+repositories:
+  - name: rustfs
+    url: https://charts.rustfs.com
+
+releases:
+  - name: rustfs
+    namespace: rustfs
+    installed: true
+    chart: rustfs/rustfs
+    version: 0.0.90
+    values:
+      - replicaCount: 1
+        mode:
+          standalone:
+            enabled: true
+          distributed:
+            enabled: false
+        secret:
+          rustfs:
+            access_key: overlord
+            secret_key: qwertyu9
+        config:
+          rustfs:
+            volumes: ""
+            address: ":9000"
+            console_enable: "true"
+            console_address: ":9001"
+            log_level: "error"
+            region: "us-east-1"
+            obs_log_directory: "/logs"
+            obs_environment: "development"
+            domains: "" # e.g. "example.com"
+            log_rotation: # Specify log rotation settings
+              size: 100 # Default value: 100 MB
+        ingress:
+          enabled: false
+        storageclass:
+          name: standard
+          dataStorageSize: 10Gi
+          logStorageSize: 120Mi
+
+
+  - name: rustfs-manager-operator
+    namespace: rustfs-manager-operator
+    chart: ./charts/rustfs-manager-operator
+    values:
+      - image:
+          registry: localhost
+          repository: controller
+          tag: latest

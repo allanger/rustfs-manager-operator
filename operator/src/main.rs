@@ -4,10 +4,11 @@ mod config;
 mod controllers;
 mod rc;
 
-use crate::controllers::rustfs_instance;
+use crate::controllers::{rustfs_custom_user, rustfs_instance};
 use crate::rc::check_rc;
 
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, Responder, get, middleware};
+use api::api::v1beta1_rustfs_custom_user::RustFSCustomUser;
 use clap::Parser;
 use kube::{Client, CustomResourceExt};
 use tracing::error;
@@ -63,6 +64,10 @@ fn crdgen() {
         "---\n{}",
         serde_yaml::to_string(&RustFSBucketUser::crd()).unwrap()
     );
+    println!(
+        "---\n{}",
+        serde_yaml::to_string(&RustFSCustomUser::crd()).unwrap()
+    );
 }
 
 #[tokio::main]
@@ -87,6 +92,7 @@ async fn main() -> anyhow::Result<()> {
     let rustfs_instance_ctrl = rustfs_instance::run(client.clone());
     let rustfs_bucket_ctrl = rustfs_bucket::run(client.clone(), config.clone());
     let rustfs_bucket_user_ctrl = rustfs_bucket_user::run(client.clone(), config.clone());
+    let rustfs_custom_user_ctrl = rustfs_custom_user::run(client.clone(), config.clone());
     // Start web server
     let server = HttpServer::new(move || {
         App::new()
@@ -101,8 +107,9 @@ async fn main() -> anyhow::Result<()> {
         rustfs_instance_ctrl,
         rustfs_bucket_ctrl,
         rustfs_bucket_user_ctrl,
+        rustfs_custom_user_ctrl,
         server.run()
     )
-    .3?;
+    .4?;
     Ok(())
 }
