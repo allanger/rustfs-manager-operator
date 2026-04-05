@@ -3,9 +3,20 @@
 version: "3"
 
 vars:
-  GREETING: Hello, world!
-
+  CONTAINER_TOOL: '{{.CONTAINER_TOOL | default "podman"}}'
+  IMG: '{{.IMG | default "localhost/controller:latest"}}'
 tasks:
+  build-container:
+    desc: Build a container with the manager.
+    cmd: '"{{.CONTAINER_TOOL}}" build -t "{{.IMG}}" -f ./operator/Containerfile ./operator'
+
+  save-container:
+    desc: Save a container image as an archive
+    deps:
+      - build-container
+    cmds:
+      - rm -f my-image.tar
+      - '"{{.CONTAINER_TOOL}}" save "{{.IMG}}" -o my-image.tar'
   pre-commit-all:
     desc: Run pre-commit --all
     silent: true

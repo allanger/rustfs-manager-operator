@@ -5,8 +5,7 @@ use crate::rc::{
     create_user, delete_user, list_buckets, render_policy, user_info,
 };
 use anyhow::{Result, anyhow};
-use api::api::v1beta1_rustfs_bucket::RustFSBucket;
-use api::api::v1beta1_rustfs_bucket_user::{RustFSBucketUser, RustFSBucketUserStatus};
+use api::api::v1beta1_rustfs_custom_user::{RustFSCustomUser, RustFSCustomUserStatus};
 use api::api::v1beta1_rustfs_instance::RustFSInstance;
 use argon2::password_hash::SaltString;
 use argon2::password_hash::rand_core::OsRng;
@@ -31,8 +30,7 @@ use tracing::*;
 
 const TYPE_USER_READY: &str = "UserReady";
 const TYPE_SECRET_READY: &str = "SecretReady";
-const FIN_OLD_CLEANUP: &str = "s3.badhouseplants.net/bucket-cleanup";
-const FIN_CLEANUP: &str = "s3.badhouseplants.net/user-cleanup";
+const FIN_CLEANUP: &str = "s3.badhouseplants.net/bucket-cleanup";
 const SECRET_LABEL: &str = "s3.badhouseplants.net/s3-bucket";
 
 const AWS_ACCESS_KEY_ID: &str = "AWS_ACCESS_KEY_ID";
@@ -45,25 +43,23 @@ const PASSWORD_LEN: usize = 40;
 
 #[instrument(skip(ctx, obj), fields(trace_id))]
 pub(crate) async fn reconcile(
-    obj: Arc<RustFSBucketUser>,
+    obj: Arc<RustFSCustomUser>,
     ctx: Arc<Context>,
-) -> RustFSBucketUserResult<Action> {
+) -> RustFSCustomUserResult<Action> {
     info!("Staring reconciling");
-    let user_api: Api<RustFSBucketUser> =
-        Api::namespaced(ctx.client.clone(), &obj.namespace().unwrap());
-    let bucket_api: Api<RustFSBucket> =
+    let user_api: Api<RustFSCustomUser> =
         Api::namespaced(ctx.client.clone(), &obj.namespace().unwrap());
     let secret_api: Api<Secret> = Api::namespaced(ctx.client.clone(), &obj.namespace().unwrap());
     let rustfs_api: Api<RustFSInstance> = Api::all(ctx.client.clone());
 
-    info!("Getting the RustFSBucketUser resource");
+    info!("Getting the RustFSCustomUser resource");
     let mut user_cr = match user_api.get(&obj.name_any()).await {
         Ok(cr) => cr,
         Err(Error::Api(ae)) if ae.code == 404 => {
             info!("Object is not found, probably removed");
             return Ok(Action::await_change());
         }
-        Err(err) => return Err(RustFSBucketUserError::KubeError(err)),
+        Err(err) => return Err(RustFSCustomUserError::KubeError(err)),
     };
 
     // On the first reconciliation status is None
@@ -76,7 +72,7 @@ pub(crate) async fn reconcile(
         Some(status) => status,
     };
 
-    let secret_name = format!("{}-bucket-creds", user_cr.name_any());
+    let secret_name = format!("{}-user-creds", user_cr.name_any());
 
     info!("Getting the secret");
     // Get the secret, if it's already there, we need to validate, or create an empty one
@@ -94,42 +90,34 @@ pub(crate) async fn reconcile(
             };
             match create_secret(secret_api.clone(), secret).await {
                 Ok(secret) => secret,
-                Err(err) => return Err(RustFSBucketUserError::KubeError(err)),
+                Err(err) => return Err(RustFSCustomUserError::KubeError(err)),
             }
         }
         Err(err) => {
             error!("{}", err);
-            return Err(RustFSBucketUserError::KubeError(err));
+            return Err(RustFSCustomUserError::KubeError(err));
         }
     };
 
     info!("Labeling the secret");
     secret = match label_secret(secret_api.clone(), &user_cr.name_any(), secret).await {
         Ok(secret) => secret,
-        Err(err) => return Err(RustFSBucketUserError::KubeError(err)),
+        Err(err) => return Err(RustFSCustomUserError::KubeError(err)),
     };
 
     info!("Setting owner references to the secret");
     if ctx.config.set_owner_reference {
         secret = match own_secret(secret_api.clone(), user_cr.clone(), secret).await {
             Ok(secret) => secret,
-            Err(err) => return Err(RustFSBucketUserError::KubeError(err)),
+            Err(err) => return Err(RustFSCustomUserError::KubeError(err)),
         };
     };
+
     if is_condition_true(status.clone().conditions, TYPE_USER_READY) {
         let mut current_finalizers = match user_cr.clone().metadata.finalizers {
             Some(finalizers) => finalizers,
             None => vec![],
         };
-        // Remove old finalizer
-        if current_finalizers.contains(&FIN_OLD_CLEANUP.to_string()) {
-            if let Some(index) = current_finalizers
-                .iter()
-                .position(|x| *x == FIN_OLD_CLEANUP.to_string())
-            {
-                current_finalizers.remove(index);
-            };
-        }
         if user_cr.spec.cleanup {
             if !current_finalizers.contains(&FIN_CLEANUP.to_string()) {
                 info!("Adding a finalizer");
@@ -150,35 +138,14 @@ pub(crate) async fn reconcile(
             .replace(&user_cr.name_any(), &PostParams::default(), &user_cr)
             .await
         {
-            return Err(RustFSBucketUserError::KubeError(err));
-        }
-    };
-
-    info!("Getting the RustFsBucket");
-    let bucket_cr = match bucket_api.get(&user_cr.spec.bucket).await {
-        Ok(bucket) => bucket,
-        Err(err) => {
-            error!("{}", err);
-            return Err(RustFSBucketUserError::KubeError(err));
-        }
-    };
-
-    let bucket_status = match bucket_cr.clone().status {
-        Some(status) => {
-            if !status.ready {
-                return Err(RustFSBucketUserError::BucketNotReadyError);
-            };
-            status
-        }
-        None => {
-            return Err(RustFSBucketUserError::BucketNotReadyError);
+            return Err(RustFSCustomUserError::KubeError(err));
         }
     };
 
     info!("Getting the RustFSIntsance");
-    let rustfs_cr = match rustfs_api.get(&bucket_cr.spec.instance).await {
+    let rustfs_cr = match rustfs_api.get(&user_cr.spec.instance).await {
         Ok(rustfs_cr) => rustfs_cr,
-        Err(err) => return Err(RustFSBucketUserError::KubeError(err)),
+        Err(err) => return Err(RustFSCustomUserError::KubeError(err)),
     };
 
     if rustfs_cr.clone().status.is_none_or(|s| !s.ready) {
@@ -188,8 +155,6 @@ pub(crate) async fn reconcile(
     // Check the secret
     let username = format!("{}-{}", user_cr.namespace().unwrap(), user_cr.name_any());
 
-    // If password missing, regen the secret
-    // Update the user
     if user_cr.metadata.deletion_timestamp.is_some() {
         info!("Object is marked for deletion");
         if let Some(mut finalizers) = user_cr.clone().metadata.finalizers {
@@ -203,7 +168,7 @@ pub(crate) async fn reconcile(
                             finalizers.remove(index);
                         };
                     }
-                    Err(err) => return Err(RustFSBucketUserError::RcCliError(err)),
+                    Err(err) => return Err(RustFSCustomUserError::RcCliError(err)),
                 }
             }
             user_cr.metadata.finalizers = Some(finalizers);
@@ -213,7 +178,7 @@ pub(crate) async fn reconcile(
             .await
         {
             Ok(_) => return Ok(Action::await_change()),
-            Err(err) => return Err(RustFSBucketUserError::KubeError(err)),
+            Err(err) => return Err(RustFSCustomUserError::KubeError(err)),
         }
     }
 
@@ -226,7 +191,7 @@ pub(crate) async fn reconcile(
             Ok(hash) => hash.to_string(),
             Err(err) => {
                 error!("{}", err);
-                return Err(RustFSBucketUserError::IllegalRustFSBucketUser);
+                return Err(RustFSCustomUserError::IllegalRustFSCustomUser);
             }
         };
         status.password_hash = Some(password_hash);
@@ -257,13 +222,13 @@ pub(crate) async fn reconcile(
                     }
                     Err(err) => {
                         error!("{}", err);
-                        return Err(RustFSBucketUserError::KubeError(err));
+                        return Err(RustFSCustomUserError::KubeError(err));
                     }
                 }
             }
             Err(err) => {
                 error!("{}", err);
-                return Err(RustFSBucketUserError::KubeError(err));
+                return Err(RustFSCustomUserError::KubeError(err));
             }
         }
     }
@@ -291,7 +256,7 @@ pub(crate) async fn reconcile(
                     }
                     Err(err) => {
                         error!("{}", err);
-                        return Err(RustFSBucketUserError::KubeError(err));
+                        return Err(RustFSCustomUserError::KubeError(err));
                     }
                 }
             }
@@ -315,7 +280,7 @@ pub(crate) async fn reconcile(
                 }
                 Err(err) => {
                     error!("{}", err);
-                    return Err(RustFSBucketUserError::KubeError(err));
+                    return Err(RustFSCustomUserError::KubeError(err));
                 }
             }
         }
@@ -326,49 +291,31 @@ pub(crate) async fn reconcile(
 
     if let Err(err) = create_user(rustfs_cr.name_any(), username.clone(), password) {
         error!("{}", err);
-        return Err(RustFSBucketUserError::IllegalRustFSBucketUser);
+        return Err(RustFSCustomUserError::IllegalRustFSCustomUser);
     }
 
     let userinfo = match user_info(rustfs_cr.name_any(), username.clone()) {
         Ok(info) => info,
-        Err(err) => return Err(RustFSBucketUserError::RcCliError(err)),
+        Err(err) => return Err(RustFSCustomUserError::RcCliError(err)),
     };
 
-    let policy_template = match user_cr.spec.access {
-        api::api::v1beta1_rustfs_bucket_user::Access::ReadOnly => POLICY_READ_ONLY,
-        api::api::v1beta1_rustfs_bucket_user::Access::ReadWrite => POLICY_READ_WRITE,
-    };
-
-    let bucket_name = match bucket_status.bucket_name {
-        Some(name) => name,
-        None => {
-            error!("bucket name is not yet set");
-            return Err(RustFSBucketUserError::IllegalRustFSBucketUser);
-        }
-    };
-
-    let data = RcPolicyData {
-        bucket: bucket_name,
-    };
-    let policy = match render_policy(policy_template.to_string(), data) {
-        Ok(policy) => policy,
-        Err(err) => return Err(RustFSBucketUserError::RcCliError(anyhow!(err))),
-    };
-    if let Err(err) = create_policy(rustfs_cr.name_any(), username.clone(), policy.to_string()) {
-        return Err(RustFSBucketUserError::RcCliError(err));
+    if let Err(err) = create_policy(
+        rustfs_cr.name_any(),
+        username.clone(),
+        user_cr.spec.policy.clone(),
+    ) {
+        return Err(RustFSCustomUserError::RcCliError(err));
     };
 
     if let Err(err) = assign_policy(rustfs_cr.name_any(), username.clone()) {
-        return Err(RustFSBucketUserError::RcCliError(err));
+        return Err(RustFSCustomUserError::RcCliError(err));
     };
 
     // create a user
-    status.policy = Some(policy);
     status.username = Some(userinfo.access_key);
     status.status = Some(userinfo.status);
     status.ready = true;
     status.secret_name = Some(secret_name);
-    status.config_map_name = bucket_status.config_map_name;
 
     status.conditions = set_condition(
         status.clone().conditions,
@@ -390,23 +337,23 @@ pub(crate) async fn reconcile(
         }
         Err(err) => {
             error!("{}", err);
-            return Err(RustFSBucketUserError::KubeError(err));
+            return Err(RustFSCustomUserError::KubeError(err));
         }
     };
 }
 
 // Bootstrap the object by adding a default status to it
 async fn init_object(
-    mut obj: RustFSBucketUser,
-    api: Api<RustFSBucketUser>,
-) -> Result<Action, RustFSBucketUserError> {
+    mut obj: RustFSCustomUser,
+    api: Api<RustFSCustomUser>,
+) -> Result<Action, RustFSCustomUserError> {
     let conditions = init_conditions(vec![
         TYPE_SECRET_READY.to_string(),
         TYPE_USER_READY.to_string(),
     ]);
-    obj.status = Some(RustFSBucketUserStatus {
+    obj.status = Some(RustFSCustomUserStatus {
         conditions,
-        ..RustFSBucketUserStatus::default()
+        ..RustFSCustomUserStatus::default()
     });
     match api
         .replace_status(obj.clone().name_any().as_str(), &Default::default(), &obj)
@@ -415,7 +362,7 @@ async fn init_object(
         Ok(_) => Ok(Action::await_change()),
         Err(err) => {
             error!("{}", err);
-            Err(RustFSBucketUserError::KubeError(err))
+            Err(RustFSCustomUserError::KubeError(err))
         }
     }
 }
@@ -521,7 +468,7 @@ async fn label_secret(
 
 async fn own_secret(
     api: Api<Secret>,
-    user_cr: RustFSBucketUser,
+    user_cr: RustFSCustomUser,
     mut secret: Secret,
 ) -> Result<Secret, kube::Error> {
     let mut owner_references = match &secret.clone().metadata.owner_references {
@@ -541,8 +488,8 @@ async fn own_secret(
     }
 
     let new_owner_reference = OwnerReference {
-        api_version: RustFSBucketUser::api_version(&()).into(),
-        kind: RustFSBucketUser::kind(&()).into(),
+        api_version: RustFSCustomUser::api_version(&()).into(),
+        kind: RustFSCustomUser::kind(&()).into(),
         name: user_cr.name_any(),
         uid: user_cr.uid().unwrap(),
         ..Default::default()
@@ -607,15 +554,15 @@ fn generate_password() -> String {
 }
 
 pub(crate) fn error_policy(
-    _: Arc<RustFSBucketUser>,
-    err: &RustFSBucketUserError,
+    _: Arc<RustFSCustomUser>,
+    err: &RustFSCustomUserError,
     _: Arc<Context>,
 ) -> Action {
     error!(trace.error = %err, "Error occurred during the reconciliation");
     Action::requeue(Duration::from_secs(5 * 60))
 }
 
-fn cr_ref_from_secret(secret: Secret) -> Option<ObjectRef<RustFSBucketUser>> {
+fn cr_ref_from_secret(secret: Secret) -> Option<ObjectRef<RustFSCustomUser>> {
     let ns = match secret.namespace() {
         Some(res) => res,
         None => return None,
@@ -628,7 +575,7 @@ fn cr_ref_from_secret(secret: Secret) -> Option<ObjectRef<RustFSBucketUser>> {
 
 #[instrument(skip(client), fields(trace_id))]
 pub async fn run(client: Client, config: OperatorConfig) {
-    let users = Api::<RustFSBucketUser>::all(client.clone());
+    let users = Api::<RustFSCustomUser>::all(client.clone());
     if let Err(err) = users.list(&ListParams::default().limit(1)).await {
         error!("{}", err);
         std::process::exit(1);
@@ -660,7 +607,7 @@ pub(crate) struct Context {
 }
 
 #[derive(Error, Debug)]
-pub enum RustFSBucketUserError {
+pub enum RustFSCustomUserError {
     #[error("SerializationError: {0}")]
     SerializationError(#[source] serde_json::Error),
 
@@ -670,10 +617,10 @@ pub enum RustFSBucketUserError {
     #[error("Finalizer Error: {0}")]
     // NB: awkward type because finalizer::Error embeds the reconciler error (which is this)
     // so boxing this error to break cycles
-    FinalizerError(#[source] Box<kube::runtime::finalizer::Error<RustFSBucketUserError>>),
+    FinalizerError(#[source] Box<kube::runtime::finalizer::Error<RustFSCustomUserError>>),
 
-    #[error("IllegalRustFSBucketUser")]
-    IllegalRustFSBucketUser,
+    #[error("IllegalRustFSCustomUser")]
+    IllegalRustFSCustomUser,
 
     #[error("SecretIsAlreadyLabeled")]
     SecretIsAlreadyLabeled,
@@ -687,4 +634,4 @@ pub enum RustFSBucketUserError {
     BucketNotReadyError,
 }
 
-pub type RustFSBucketUserResult<T, E = RustFSBucketUserError> = std::result::Result<T, E>;
+pub type RustFSCustomUserResult<T, E = RustFSCustomUserError> = std::result::Result<T, E>;
