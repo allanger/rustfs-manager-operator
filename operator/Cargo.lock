@@ -1425,9 +1425,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "1.4.0"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3ba2a386d7f85a81f119ad7498ebe444d2e22c2af0b86b069416ace48b3311a"
+checksum = "6970f50e31d6fc17d3fa27329444bfa74e196cf62e95052a3f6fee181dba6425"
 dependencies = [
  "bytes",
  "itoa",
@@ -1440,7 +1440,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1efedce1fb8e6913f23e0c92de8e62cd5b772a67e7b3946df930a62566c93184"
 dependencies = [
  "bytes",
- "http 1.4.0",
+ "http 1.4.2",
 ]
 
 [[package]]
@@ -1451,7 +1451,7 @@ checksum = "b021d93e26becf5dc7e1b75b1bed1fd93124b374ceb73f43d4d4eafec896a64a"
 dependencies = [
  "bytes",
  "futures-core",
- "http 1.4.0",
+ "http 1.4.2",
  "http-body",
  "pin-project-lite",
 ]
@@ -1478,7 +1478,7 @@ dependencies = [
  "bytes",
  "futures-channel",
  "futures-core",
- "http 1.4.0",
+ "http 1.4.2",
  "http-body",
  "httparse",
  "itoa",
@@ -1495,7 +1495,7 @@ version = "0.27.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3c93eb611681b207e1fe55d5a71ecf91572ec8a6705cdb6857f7d8d5242cf58"
 dependencies = [
- "http 1.4.0",
+ "http 1.4.2",
  "hyper",
  "hyper-util",
  "log",
@@ -1529,7 +1529,7 @@ dependencies = [
  "bytes",
  "futures-channel",
  "futures-util",
- "http 1.4.0",
+ "http 1.4.2",
  "http-body",
  "hyper",
  "libc",
@@ -1823,7 +1823,7 @@ dependencies = [
  "bytes",
  "either",
  "futures",
- "http 1.4.0",
+ "http 1.4.2",
  "http-body",
  "http-body-util",
  "hyper",
@@ -1856,7 +1856,7 @@ checksum = "f126d2db7a8b532ec1d839ece2a71e2485dc3bbca6cc3c3f929becaa810e719e"
 dependencies = [
  "derive_more",
  "form_urlencoded",
- "http 1.4.0",
+ "http 1.4.2",
  "jiff",
  "json-patch",
  "k8s-openapi",
@@ -2596,7 +2596,7 @@ dependencies = [
  "envtest",
  "futures",
  "handlebars",
- "http 1.4.0",
+ "http 1.4.2",
  "hyper",
  "k8s-openapi",
  "kube",
@@ -3269,7 +3269,7 @@ dependencies = [
  "base64",
  "bitflags",
  "bytes",
- "http 1.4.0",
+ "http 1.4.2",
  "http-body",
  "mime",
  "pin-project-lite",
