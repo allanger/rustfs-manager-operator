@@ -1,6 +1,6 @@
 use crate::conditions::{is_condition_true, set_condition};
 use crate::config::OperatorConfig;
-use crate::rc::{create_bucket, delete_bucket, list_buckets};
+use crate::rc::{create_bucket, delete_bucket, list_buckets, set_bucket_access};
 use api::api::v1beta1_rustfs_bucket::{RustFSBucket, RustFSBucketStatus};
 use api::api::v1beta1_rustfs_instance::RustFSInstance;
 use futures::StreamExt;
@@ -211,6 +211,14 @@ pub(crate) async fn reconcile(
         ) {
             return Err(RustFSBucketError::RcCliError(err));
         }
+    }
+
+    if let Err(err) = set_bucket_access(
+        rustfs_cr.name_any(),
+        bucket_name.clone(),
+        bucket_cr.spec.access.to_string(),
+    ) {
+        return Err(RustFSBucketError::RcCliError(err));
     }
     status.ready = true;
     status.conditions = set_condition(

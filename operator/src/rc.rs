@@ -1,3 +1,4 @@
+use api::api::v1beta1_rustfs_bucket::Access;
 use handlebars::{Handlebars, RenderError};
 use serde::{Deserialize, Serialize};
 use serde_json::from_str;
@@ -222,6 +223,24 @@ pub(crate) fn delete_bucket(alias: String, bucket_name: String) -> Result<(), an
     let path_string = format!("{}/{}", alias, bucket_name);
     let path: &str = &path_string;
     cli::rc_exec(vec!["rb", path, "--force", "--json"])?;
+    Ok(())
+}
+
+pub(crate) fn set_bucket_access(
+    alias: String,
+    bucket_name: String,
+    access: String,
+) -> Result<(), anyhow::Error> {
+    let path_string = format!("{}/{}", alias, bucket_name);
+    let path: &str = &path_string;
+    cli::rc_exec(vec![
+        "bucket",
+        "anonymous",
+        "set",
+        access.as_str(),
+        path,
+        "--json",
+    ])?;
     Ok(())
 }
 
