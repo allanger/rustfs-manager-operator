@@ -10,7 +10,7 @@ Find better docs here: <https://rustfs.badhouseplants.net>
 ### Install the operator
 
 ```shell
-helm install rustfs-manager-operator oci://ghcr.io/allanger/rustfs-manager-operator/helm/rustfs-manager-operator --version 0.1.2
+helm install rustfs-manager-operator oci://ghcr.io/allanger/rustfs-manager-operator/helm/rustfs-manager-operator --version 0.1.5
 ```
 ### Connect it to a RustFS instance
 
@@ -26,7 +26,7 @@ password: qwertyu9
 2. Install the **rustfs-instance** helm chart
 
 ```shell
-helm install rustfs-instance oci://ghcr.io/allanger/rustfs-manager-operator/helm/rustfs-instance --version 0.1.2 -f ./values.yaml
+helm install rustfs-instance oci://ghcr.io/allanger/rustfs-manager-operator/helm/rustfs-instance --version 0.1.5 -f ./values.yaml
 ```
 
 ### Start creating Buckets and Users
