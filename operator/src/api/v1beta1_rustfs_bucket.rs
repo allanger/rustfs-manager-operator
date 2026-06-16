@@ -1,8 +1,34 @@
+use std::fmt;
+
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition;
 use k8s_openapi::serde::{Deserialize, Serialize};
 use kube::CustomResource;
 use kube::{self};
 use schemars::JsonSchema;
+
+#[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, Default)]
+pub enum Access {
+    #[serde(rename = "private")]
+    #[default]
+    Private,
+    #[serde(rename = "public")]
+    Public,
+    #[serde(rename = "download")]
+    Download,
+    #[serde(rename = "upload")]
+    Upload,
+}
+
+impl fmt::Display for Access {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Access::Private => write!(f, "private"),
+            Access::Public => write!(f, "public"),
+            Access::Download => write!(f, "download"),
+            Access::Upload => write!(f, "upload"),
+        }
+    }
+}
 
 #[derive(CustomResource, Deserialize, Serialize, Clone, Debug, JsonSchema)]
 #[kube(
@@ -16,7 +42,8 @@ use schemars::JsonSchema;
     printcolumn = r#"{"name":"Bucket Name","type":"string","description":"The name of the bucket","jsonPath":".status.bucketName"}"#,
     printcolumn = r#"{"name":"Endpoint","type":"string","description":"The URL of the instance","jsonPath":".status.endpoint"}"#,
     printcolumn = r#"{"name":"Region","type":"string","description":"The region of the instance","jsonPath":".status.region"}"#,
-    printcolumn = r#"{"name":"Status","type":"boolean","description":"Is the S3Instance ready","jsonPath":".status.ready"}"#
+    printcolumn = r#"{"name":"Status","type":"boolean","description":"Is the S3Instance ready","jsonPath":".status.ready"}"#,
+    printcolumn = r#"{"name":"Access","type":"string","description":"Which access is set on the bucket","jsonPath":".spec.access"}"#
 )]
 #[serde(rename_all = "camelCase")]
 pub struct RustFSBucketSpec {
@@ -30,6 +57,8 @@ pub struct RustFSBucketSpec {
     #[serde(default)]
     #[kube(validation = Rule::new("self == oldSelf").message("field is immutable"))]
     pub versioning: bool,
+    #[serde(default)]
+    pub access: Access,
 }
 
 /// The status object of `DbInstance`

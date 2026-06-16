@@ -66,7 +66,10 @@ spec:
   objectLock: false
   # If true, bucket will be created with versioning
   versioning: false
+  # Choose which access to set (public, upload, download, private)
+  access: private
 ```
+
 
 ```shell
 kubectl get bucket <bucket name>
