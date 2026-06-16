@@ -43,6 +43,7 @@ spec:
             spec:
               properties:
                 access:
+                  default: private
                   enum:
                     - private
                     - public
@@ -62,7 +63,6 @@ spec:
                   default: false
                   type: boolean
               required:
-                - access
                 - instance
               type: object
             status:
