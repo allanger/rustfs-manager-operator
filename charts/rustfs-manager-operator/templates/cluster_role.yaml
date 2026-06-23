@@ -40,7 +40,7 @@ rules:
   - rustfs.badhouseplants.net
   resources:
   - rustfsbuckets/finalizers
-  - rustfsintsances/finalizers
+  - rustfsinstsances/finalizers
   - rustfsbucketusers/finalizers
   - rustfscustomusers/finalizers
   verbs:
