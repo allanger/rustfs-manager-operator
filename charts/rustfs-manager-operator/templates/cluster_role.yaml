@@ -44,7 +44,6 @@ rules:
   - rustfsbucketusers/finalizers
   - rustfscustomusers/finalizers
   verbs:
-  verbs:
   - update
 
 - apiGroups:
