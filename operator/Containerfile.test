@@ -1,4 +1,4 @@
-FROM docker.io/rustfs/rc:v0.1.22 AS rc
+FROM docker.io/rustfs/rc:v0.1.26 AS rc
 WORKDIR /output
 RUN cp $(which rc) .
 
