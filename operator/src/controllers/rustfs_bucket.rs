@@ -152,17 +152,6 @@ pub(crate) async fn reconcile(
         bucket_cr.name_any()
     );
 
-    info!("Updating the ConfigMap");
-    if let Err(err) = ensure_data_configmap(
-        cm_api.clone(),
-        configmap.clone(),
-        rustfs_cr.clone(),
-        &bucket_name,
-    )
-    .await
-    {
-        return Err(RustFSBucketError::KubeError(err));
-    };
 
     if bucket_cr.metadata.deletion_timestamp.is_some() {
         info!("Object is marked for deletion");
@@ -187,6 +176,18 @@ pub(crate) async fn reconcile(
             Err(err) => return Err(RustFSBucketError::KubeError(err)),
         }
     }
+
+    info!("Updating the ConfigMap");
+    if let Err(err) = ensure_data_configmap(
+        cm_api.clone(),
+        configmap.clone(),
+        rustfs_cr.clone(),
+        &bucket_name,
+    )
+    .await
+    {
+        return Err(RustFSBucketError::KubeError(err));
+    };
 
     info!("Getting buckets");
 
