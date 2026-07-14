@@ -21,7 +21,7 @@ jobs:
             image: rustfs-manager-operator-docs
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: docker/setup-qemu-action@v4
       - name: Set the image metadata
         run: ./scripts/set_image_metadata
