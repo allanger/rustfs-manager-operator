@@ -99,7 +99,6 @@ async fn main() -> anyhow::Result<()> {
             .wrap(middleware::Logger::default().exclude("/health"))
             .service(health)
     })
-    .bind("0.0.0.0:8080")?
     .bind("[::]:8080")?
     .shutdown_timeout(5);
 
