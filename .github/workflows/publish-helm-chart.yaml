@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
       - uses: actions/setup-python@v7
+      - uses: actions/setup-go@v7
       - name: Insert dev images to the charts
         if: (github.event_name != 'release')
         run: |-
