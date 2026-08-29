@@ -27,7 +27,7 @@ jobs:
         run: ./scripts/set_image_metadata
       - name: Build an image
         id: build-image
-        uses: redhat-actions/buildah-build@v2
+        uses: redhat-actions/buildah-build@v3
         with:
           image: ${{ matrix.image }}-dev
           tags: ${{ env.TAGS }}
