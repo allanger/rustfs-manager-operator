@@ -21,7 +21,7 @@ rand = "0.10.0"
 tempfile = "3.27.0"
 password-hash = "0.6.0"
 sha-crypt = "0.5.0"
-argon2 = "0.5.3"
+argon2 = "0.6.0"
 handlebars = "6.4.0"
 kube = { version = "4.0.0", features = ["runtime", "derive", "client", "aws-lc-rs"] }
 k8s-openapi = { version = "0.28.0", features = ["latest", "schemars"] }
