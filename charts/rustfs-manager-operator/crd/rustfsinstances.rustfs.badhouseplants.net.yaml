@@ -6,7 +6,6 @@ metadata:
 spec:
   group: rustfs.badhouseplants.net
   names:
-    categories: []
     kind: RustFSInstance
     plural: rustfsinstances
     shortNames:
