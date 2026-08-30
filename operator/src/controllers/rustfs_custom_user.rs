@@ -1,14 +1,9 @@
-use crate::conditions::{init_conditions, is_condition_true, is_condition_unknown, set_condition};
+use crate::conditions::{init_conditions, is_condition_true, set_condition};
 use crate::config::OperatorConfig;
-use crate::rc::{
-    POLICY_READ_ONLY, POLICY_READ_WRITE, RcPolicyData, assign_policy, create_bucket, create_policy,
-    create_user, delete_user, list_buckets, render_policy, user_info,
-};
-use anyhow::{Result, anyhow};
+use crate::rc::{assign_policy, create_policy, create_user, delete_user, user_info};
+use anyhow::Result;
 use api::api::v1beta1_rustfs_custom_user::{RustFSCustomUser, RustFSCustomUserStatus};
 use api::api::v1beta1_rustfs_instance::RustFSInstance;
-use argon2::password_hash::SaltString;
-use argon2::password_hash::rand_core::OsRng;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use futures::StreamExt;
 use k8s_openapi::ByteString;
@@ -16,7 +11,7 @@ use k8s_openapi::api::core::v1::Secret;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::OwnerReference;
 use kube::api::{ListParams, ObjectMeta, PostParams};
 use kube::runtime::Controller;
-use kube::runtime::controller::{Action, ReconcileRequest};
+use kube::runtime::controller::Action;
 use kube::runtime::events::Recorder;
 use kube::runtime::reflector::ObjectRef;
 use kube::runtime::watcher::Config;
@@ -186,8 +181,7 @@ pub(crate) async fn reconcile(
     if !is_condition_true(status.clone().conditions, TYPE_SECRET_READY) {
         let password = generate_password();
         let argon2 = Argon2::default();
-        let salt = SaltString::generate(&mut OsRng);
-        let password_hash = match argon2.hash_password(&password.as_bytes(), &salt) {
+        let password_hash = match argon2.hash_password(&password.as_bytes()) {
             Ok(hash) => hash.to_string(),
             Err(err) => {
                 error!("{}", err);
