@@ -215,6 +215,30 @@ pub(crate) async fn reconcile(
         }
     }
 
+    if !check_secret_data(secret.clone()) {
+        status.conditions = set_condition(
+            status.clone().conditions,
+            user_cr.clone().metadata,
+            TYPE_SECRET_READY,
+            "False".to_string(),
+            "Reconciled".to_string(),
+            "Secret is invalid".to_string(),
+        );
+        user_cr.status = Some(status);
+        match user_api
+            .replace_status(&user_cr.name_any(), &PostParams::default(), &user_cr)
+            .await
+        {
+            Ok(_) => {
+                return Ok(Action::await_change());
+            }
+            Err(err) => {
+                error!("{}", err);
+                return Err(RustFSBucketUserError::KubeError(err));
+            }
+        }
+    }
+
     // If secret is not ready, generate a new one
     if !is_condition_true(status.clone().conditions, TYPE_SECRET_READY) {
         let password = generate_password();
