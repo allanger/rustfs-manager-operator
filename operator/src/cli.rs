@@ -1,9 +1,9 @@
 use anyhow::{Result, anyhow};
 use std::process::Command;
-use tracing::info;
+use tracing::debug;
 
 pub(crate) fn rc_exec(args: Vec<&str>) -> Result<String, anyhow::Error> {
-    info!("Executing rc + {:?}", args);
+    debug!("Executing rc + {:?}", args);
     let expect = format!("command has failed: rc {:?}", args);
     let output = Command::new("rc").args(args).output().expect(&expect);
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -14,7 +14,7 @@ pub(crate) fn rc_exec(args: Vec<&str>) -> Result<String, anyhow::Error> {
 }
 
 pub(crate) fn cli_exec_from_dir(command: String, dir: String) -> Result<String, anyhow::Error> {
-    info!("executing: {}", command);
+    debug!("executing: {}", command);
     let expect = format!("command has failed: {}", command);
     let output = Command::new("sh")
         .arg("-c")
