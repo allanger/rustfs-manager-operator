@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-go@v7
       - uses: pre-commit/action@v3.0.1
       - uses: go-task/setup-task@v2
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           rustflags: ""
       - name: Check CRD generation
