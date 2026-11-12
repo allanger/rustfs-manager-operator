@@ -3,5 +3,62 @@
   "extends": [
     "config:recommended",
     ":semanticCommitsDisabled"
+  ],
+  "packageRules": [
+    {
+      "description": "Kubernetes client crates must move together (kube pins a k8s-openapi range)",
+      "groupName": "kubernetes crates",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["kube", "kube-*", "k8s-openapi", "schemars", "envtest"]
+    },
+    {
+      "description": "RustCrypto password hashing crates share the password-hash traits",
+      "groupName": "password hashing crates",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["password-hash", "argon2", "sha-crypt"]
+    },
+    {
+      "groupName": "serde crates",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["serde", "serde_*"]
+    },
+    {
+      "groupName": "tracing crates",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["tracing", "tracing-*"]
+    },
+    {
+      "groupName": "async runtime crates",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["tokio", "futures"]
+    },
+    {
+      "groupName": "http crates",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["actix-web", "http", "hyper", "tower-test"]
+    },
+    {
+      "description": "The rc client image and the rustfs server chart should stay in sync",
+      "groupName": "rustfs",
+      "matchDepNames": ["docker.io/rustfs/rc", "rustfs"]
+    },
+    {
+      "groupName": "rust toolchain",
+      "matchDepNames": ["rust", "actions-rust-lang/setup-rust-toolchain"]
+    },
+    {
+      "groupName": "poetry",
+      "matchDepNames": ["poetry", "abatilo/actions-poetry"]
+    },
+    {
+      "groupName": "github pages actions",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["actions/configure-pages", "actions/upload-pages-artifact", "actions/deploy-pages"]
+    },
+    {
+      "groupName": "redhat actions",
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["redhat-actions/**"]
+    }
   ]
 }
