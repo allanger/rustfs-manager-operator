@@ -7,9 +7,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
     permissions:
+      contents: read
       packages: write
+
     strategy:
       matrix:
         include:
@@ -19,18 +21,23 @@ jobs:
           - containerfile: ./documentation/Containerfile
             context: ./documentation
             image: rustfs-manager-operator-docs
-
+        platform:
+          - platform: amd64
+            runner: ubuntu-24.04
+          - platform: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-qemu-action@v4
       - uses: go-task/setup-task@v2
       - name: Set the image metadata
         run: task set-image-metadata
+
       - name: Build an image
         id: build-image
         uses: redhat-actions/buildah-build@v3
         with:
-          image: ${{ matrix.image }}-dev
+          image: ${{ matrix.image }}-${{ matrix.image }}-dev
           tags: ${{ env.TAGS }}
           platforms: linux/amd64
           context: ${{ matrix.context }}
@@ -48,21 +55,122 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Set the version tag (only if released)
-        id: retag-version
-        if: (github.event_name == 'release' && (github.event.action == 'published' || github.event.action == 'edited'))
-        run: |
-          buildah tag \
-          ${{ steps.build-image.outputs.image }}:${{ github.sha }} \
-          ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest
-          buildah tag \
-          ${{ steps.build-image.outputs.image }}:${{ github.sha }} \
-          ghcr.io/${{ github.repository_owner }}/${{ matrix.image}}:${{ github.event.release.tag_name }}
-
-      - name: Push the release image to GHCR
-        if: (github.event_name == 'release' && (github.event.action == 'published' || github.event.action == 'edited'))
-        uses: redhat-actions/push-to-registry@v3
+      - uses: sigstore/cosign-installer@v4.1.2
+      - uses: docker/login-action@v4.6.0
         with:
-          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ github.event.release.tag_name }}
+          registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ github.token }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "${{ steps.push-to-ghcr.outputs.registry-path }}"
+          scan-type: image
+          format: "cosign-vuln"
+          exit-code: "0"
+          ignore-unfixed: false
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+          output: ./report.json
+
+      - name: Sign the image with GitHub OIDC Token
+        env:
+          DIGEST: ${{ steps.push-to-ghcr.outputs.digest }}
+          IMAGE: ${{ steps.push-to-ghcr.outputs.registry-path }}
+        run: |
+          cosign sign --yes ${IMAGE}@${DIGEST}
+          cosign attest --type vuln --predicate report.json ${IMAGE}@${DIGEST}
+
+      - name: Save image digest
+        env:
+          DIGEST: ${{ steps.push-to-ghcr.outputs.digest }}
+          IMAGE: ${{ matrix.image }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          echo "$DIGEST" > "${IMAGE}-${PLATFORM}.digest"
+
+      - name: Upload image digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.image }}-${{ matrix.platform }}
+          path: ${{ matrix.image }}-${{ matrix.platform }}.digest
+          retention-days: 1
+
+  manifest:
+    name: Create manifest for ${{ matrix.image }}
+    runs-on: ubuntu-24.04
+    needs: build
+
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - rustfs-manager-operator
+          - rustfs-manager-operator-docs
+
+    steps:
+      - name: Download all image digests
+        uses: actions/download-artifact@v4
+        with:
+          pattern: digest-${{ matrix.image }}-*
+          path: ./digests
+          merge-multiple: true
+
+      - name: Install Buildah
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y buildah
+
+      - name: Login to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          buildah login \
+            --username "${{ github.actor }}" \
+            --password "$GH_TOKEN" \
+            ghcr.io
+
+      - name: Create multi-platform manifest
+        id: manifest
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+        run: |
+          AMD64_DIGEST=$(cat "./digests/${IMAGE##*/}-amd64.digest")
+          ARM64_DIGEST=$(cat "./digests/${IMAGE##*/}-arm64.digest")
+
+          MANIFEST="${{ matrix.image }}-manifest"
+
+          buildah manifest create "$MANIFEST"
+
+          buildah manifest add "$MANIFEST" \
+            "docker://${IMAGE}@${AMD64_DIGEST}"
+
+          buildah manifest add "$MANIFEST" \
+            "docker://${IMAGE}@${ARM64_DIGEST}"
+
+          echo "manifest=$MANIFEST" >> "$GITHUB_OUTPUT"
+
+      - name: Push commit-tagged manifest
+        env:
+          MANIFEST: ${{ steps.manifest.outputs.manifest }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+        run: |
+          buildah manifest push --all \
+            "$MANIFEST" \
+            "docker://${IMAGE}:${{ github.sha }}"
+
+      - name: Push release manifests
+        if: github.event_name == 'release' && (github.event.action == 'published' || github.event.action == 'edited')
+        env:
+          MANIFEST: ${{ steps.manifest.outputs.manifest }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          buildah manifest push --all \
+            "$MANIFEST" \
+          "docker://${IMAGE}:${VERSION}"
+
+          buildah manifest push --all \
+            "$MANIFEST" \
+            "docker://${IMAGE}:latest"
+
