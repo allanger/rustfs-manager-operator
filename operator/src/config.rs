@@ -1,10 +1,18 @@
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 
+fn default_periodic_reconciliation_secs() -> u64 {
+    // One hour
+    3600
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct OperatorConfig {
     pub set_owner_reference: bool,
+    pub disable_periodic_reconciliation: bool,
+    #[serde(default = "default_periodic_reconciliation_secs")]
+    pub periodic_reconciliation_secs: u64,
 }
 
 pub(crate) fn read_config_from_file(path: String) -> Result<OperatorConfig, anyhow::Error> {

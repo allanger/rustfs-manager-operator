@@ -1,4 +1,5 @@
 use crate::conditions::{init_conditions, is_condition_true, is_condition_unknown, set_condition};
+use crate::config::OperatorConfig;
 use crate::rc::{RcAlias, admin_info, get_aliases, list_buckets, set_alias};
 use api::api::v1beta1_rustfs_instance::{RustFSInstance, RustFSInstanceStatus};
 use futures::StreamExt;
@@ -222,11 +223,16 @@ pub(crate) async fn reconcile(
     );
     rustfs_cr.status = Some(status);
 
+    let action = match ctx.config.disable_periodic_reconciliation {
+        true => Action::requeue(Duration::from_secs(ctx.config.periodic_reconciliation_secs)),
+        false => Action::await_change(),
+    };
+
     match rustfs_api
         .replace_status(&rustfs_cr.name_any(), &PostParams::default(), &rustfs_cr)
         .await
     {
-        Ok(_) => return Ok(Action::requeue(Duration::from_secs(120))),
+        Ok(_) => return Ok(action),
         Err(err) => return Err(RustFSInstanceError::KubeError(err)),
     };
 }
@@ -376,7 +382,7 @@ fn cr_ref_from_secret(secret: Secret) -> Option<ObjectRef<RustFSInstance>> {
 }
 
 #[instrument(skip(client), fields(trace_id))]
-pub async fn run(client: Client) {
+pub async fn run(client: Client, config: OperatorConfig) {
     let s3instances = Api::<RustFSInstance>::all(client.clone());
     if let Err(err) = s3instances.list(&ListParams::default().limit(1)).await {
         error!("{}", err);
@@ -384,7 +390,11 @@ pub async fn run(client: Client) {
     }
     let recorder = Recorder::new(client.clone(), "s3instance-controller".into());
     let secret_api: Api<Secret> = Api::all(client.clone());
-    let context = Context { client, recorder };
+    let context = Context {
+        client,
+        recorder,
+        config,
+    };
     Controller::new(s3instances, Config::default().any_semantic())
         .shutdown_on_signal()
         .watches(secret_api, Config::default(), cr_ref_from_secret)
@@ -401,6 +411,7 @@ pub(crate) struct Context {
     pub client: Client,
     /// Event recorder
     pub recorder: Recorder,
+    pub(crate) config: OperatorConfig,
 }
 
 #[derive(Error, Debug)]
