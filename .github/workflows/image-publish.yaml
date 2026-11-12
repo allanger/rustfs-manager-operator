@@ -11,24 +11,29 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     strategy:
       matrix:
-        include:
-          - containerfile: ./operator/Containerfile
-            context: ./operator
-            image: rustfs-manager-operator
-          - containerfile: ./documentation/Containerfile
-            context: ./documentation
-            image: rustfs-manager-operator-docs
+        image:
+          - rustfs-manager-operator
+          - rustfs-manager-operator-docs
         platform:
+          - amd64
+          - arm64
+        include:
+          - image: rustfs-manager-operator
+            containerfile: ./operator/Containerfile
+            context: ./operator
+          - image: rustfs-manager-operator-docs
+            containerfile: ./documentation/Containerfile
+            context: ./documentation
           - platform: amd64
             runner: ubuntu-24.04
           - platform: arm64
             runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v7
-      - uses: docker/setup-qemu-action@v4
       - uses: go-task/setup-task@v2
       - name: Set the image metadata
         run: task set-image-metadata
@@ -37,9 +42,9 @@ jobs:
         id: build-image
         uses: redhat-actions/buildah-build@v3
         with:
-          image: ${{ matrix.image }}-${{ matrix.image }}-dev
-          tags: ${{ env.TAGS }}
-          platforms: linux/amd64
+          image: ${{ matrix.image }}-dev
+          tags: ${{ env.TAGS }}-${{ matrix.platform }}
+          platforms: linux/${{ matrix.platform }}
           context: ${{ matrix.context }}
           containerfiles: |
             ${{ matrix.containerfile }}
@@ -100,6 +105,9 @@ jobs:
     name: Create manifest for ${{ matrix.image }}
     runs-on: ubuntu-24.04
     needs: build
+    permissions:
+      contents: read
+      packages: write
 
     strategy:
       fail-fast: false
@@ -133,10 +141,10 @@ jobs:
       - name: Create multi-platform manifest
         id: manifest
         env:
-          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}-dev
         run: |
-          AMD64_DIGEST=$(cat "./digests/${IMAGE##*/}-amd64.digest")
-          ARM64_DIGEST=$(cat "./digests/${IMAGE##*/}-arm64.digest")
+          AMD64_DIGEST=$(cat "./digests/${{ matrix.image }}-amd64.digest")
+          ARM64_DIGEST=$(cat "./digests/${{ matrix.image }}-arm64.digest")
 
           MANIFEST="${{ matrix.image }}-manifest"
 
@@ -153,7 +161,7 @@ jobs:
       - name: Push commit-tagged manifest
         env:
           MANIFEST: ${{ steps.manifest.outputs.manifest }}
-          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}-dev
         run: |
           buildah manifest push --all \
             "$MANIFEST" \
@@ -168,9 +176,8 @@ jobs:
         run: |
           buildah manifest push --all \
             "$MANIFEST" \
-          "docker://${IMAGE}:${VERSION}"
+            "docker://${IMAGE}:${VERSION}"
 
           buildah manifest push --all \
             "$MANIFEST" \
             "docker://${IMAGE}:latest"
-
