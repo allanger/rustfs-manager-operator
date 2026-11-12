@@ -31,18 +31,12 @@ struct Args {
     #[arg(long, default_value_t = 8081)]
     /// The address the probe endpoint binds to.
     health_probe_port: u16,
-    #[arg(long, default_value_t = true)]
-    /// Enabling this will ensure there is only one active controller manager.
-    // DB Operator feature flags
-    #[arg(long, default_value_t = false)]
-    /// If enabled, DB Operator will run full reconciliation only
-    /// when changes are detected
-    is_change_check_nabled: bool,
     #[arg(long, default_value = "/srv/config/config.json")]
     /// A path to a config file
     config: String,
-    /// Set to true to generate crds
+
     #[arg(long, default_value_t = false)]
+    /// Set to true to generate crds
     print_crd: bool,
 }
 
@@ -89,7 +83,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .expect("failed to create kube Client");
     let config = read_config_from_file(args.config)?;
-    let rustfs_instance_ctrl = rustfs_instance::run(client.clone());
+    let rustfs_instance_ctrl = rustfs_instance::run(client.clone(), config.clone());
     let rustfs_bucket_ctrl = rustfs_bucket::run(client.clone(), config.clone());
     let rustfs_bucket_user_ctrl = rustfs_bucket_user::run(client.clone(), config.clone());
     let rustfs_custom_user_ctrl = rustfs_custom_user::run(client.clone(), config.clone());

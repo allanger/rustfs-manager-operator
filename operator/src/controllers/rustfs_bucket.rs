@@ -152,7 +152,6 @@ pub(crate) async fn reconcile(
         bucket_cr.name_any()
     );
 
-
     if bucket_cr.metadata.deletion_timestamp.is_some() {
         info!("Object is marked for deletion");
         if let Some(mut finalizers) = bucket_cr.clone().metadata.finalizers {
@@ -237,11 +236,16 @@ pub(crate) async fn reconcile(
     bucket_cr.status = Some(status);
 
     info!("Updating status of the bucket resource");
+
+    let action = match ctx.config.disable_periodic_reconciliation {
+        true => Action::requeue(Duration::from_secs(ctx.config.periodic_reconciliation_secs)),
+        false => Action::await_change(),
+    };
     match bucket_api
         .replace_status(&bucket_cr.name_any(), &PostParams::default(), &bucket_cr)
         .await
     {
-        Ok(_) => return Ok(Action::requeue(Duration::from_secs(120))),
+        Ok(_) => return Ok(action),
         Err(err) => return Err(RustFSBucketError::KubeError(err)),
     };
 }
