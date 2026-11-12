@@ -12,6 +12,8 @@ image:
 
 config:
   setOwnerReference: false
+  disablePeriodicReconciliation: false
+  periodicReconciliationSecs: 3600
 
 docs:
   enabled: false
