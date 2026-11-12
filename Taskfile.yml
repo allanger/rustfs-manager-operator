@@ -93,4 +93,3 @@ tasks:
         # -- Set the image tag by commit sha
         # --------------------------------------------
         echo "TAGS=${GITHUB_SHA}" >> "${GITHUB_ENV}"
-
