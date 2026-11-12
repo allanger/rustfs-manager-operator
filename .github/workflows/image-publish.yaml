@@ -23,8 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-qemu-action@v4
+      - uses: go-task/setup-task@v2
       - name: Set the image metadata
-        run: ./scripts/set_image_metadata
+        run: task set-image-metadata
       - name: Build an image
         id: build-image
         uses: redhat-actions/buildah-build@v3
