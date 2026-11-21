@@ -103,7 +103,7 @@ jobs:
 
   manifest:
     name: Create manifest for ${{ matrix.image }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: build
     permissions:
       contents: read
